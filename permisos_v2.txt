@@ -1,0 +1,45 @@
+PROJECT_ID="mlops17"
+SA_GITHUB="github-actions@mlops17.iam.gserviceaccount.com"
+SA_VERTEX="mlops17-vertex-process@mlops17.iam.gserviceaccount.com"
+SA_CLOUD_RUN="cloud-run@mlops17.iam.gserviceaccount.com"
+
+#PIPELINE VERTEX
+
+gcloud storage buckets add-iam-policy-binding gs://mlops_17_vertex \
+  --member="serviceAccount:$SA_GITHUB" \
+  --role="roles/storage.legacyBucketWriter"
+
+gcloud storage buckets add-iam-policy-binding gs://mlops_17_vertex \
+  --member="serviceAccount:$SA_GITHUB" \
+  --role="roles/storage.objectCreator"
+
+gcloud storage buckets add-iam-policy-binding gs://mlops_17_vertex \
+  --member="serviceAccount:$SA_GITHUB" \
+  --role="roles/storage.objectViewer"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:$SA_GITHUB" \
+  --role="roles/aiplatform.user"
+
+gcloud iam service-accounts add-iam-policy-binding $SA_VERTEX \
+  --member="serviceAccount:$SA_GITHUB" \
+  --role="roles/iam.serviceAccountUser"
+
+
+#DESPLIEGUE CLOUD RUN JOB
+
+gcloud artifacts repositories add-iam-policy-binding imagen \
+  --location=us-central1 \
+  --project=$PROJECT_ID \
+  --member="serviceAccount:$SA_GITHUB" \
+  --role="roles/artifactregistry.writer"
+
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:$SA_GITHUB" \
+  --role="roles/run.admin"
+
+
+gcloud iam service-accounts add-iam-policy-binding $SA_CLOUD_RUN \
+  --member="serviceAccount:$SA_GITHUB" \
+  --role="roles/iam.serviceAccountUser"

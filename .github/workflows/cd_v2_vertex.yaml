@@ -1,0 +1,58 @@
+name: Build & Deploy Cloud Run Job (Vertex Pipeline)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      PROJECT_ID: ${{ secrets.GOOGLE_PROJECT }}
+      REGION: us-central1
+      IMAGE_REPOSITORY: imagen
+      IMAGE_NAME: vertex_pipeline
+
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+
+    - name: Setup gcloud
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GOOGLE_PROJECT }}
+        export_default_credentials: true
+
+    # Construir y publicar la imagen Docker en Artifact Registry
+    - name: build and push the docker image 
+      env:
+        GOOGLE_PROJECT: ${{ secrets.GOOGLE_PROJECT }} 
+      run: | 
+        # Configurar Docker para autenticar con Artifact Registry
+        gcloud auth configure-docker us-central1-docker.pkg.dev
+        # Construir imagen
+        docker build -t us-central1-docker.pkg.dev/$GOOGLE_PROJECT/$IMAGE_REPOSITORY/$IMAGE_NAME:latest ./despliegue_cloud_run
+        # Publicar imagen Docker en Artifact Registry
+        docker push us-central1-docker.pkg.dev/$GOOGLE_PROJECT/$IMAGE_REPOSITORY/$IMAGE_NAME:latest
+
+
+
+    - name: Deploy Cloud Run Job
+      env:
+        GOOGLE_PROJECT: ${{ secrets.GOOGLE_PROJECT }} 
+      run: |
+        gcloud run jobs deploy run-pipeline-job \
+          --image us-central1-docker.pkg.dev/$GOOGLE_PROJECT/$IMAGE_REPOSITORY/$IMAGE_NAME \
+          --region $REGION \
+          --service-account cloud-run-sa@$GOOGLE_PROJECT.iam.gserviceaccount.com \
+          --set-env-vars PROJECT_ID=xxx,LOCATION=us-central1,PIPELINE_PATH=xxx,SERVICE_ACCOUNT=xxx,VALIDA_TABLE=xxx,INPUT_AGE=xx \
+          --quiet
